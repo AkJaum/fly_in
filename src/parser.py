@@ -197,8 +197,16 @@ class MapParser:
                 f"invalid zone type '{kind}'; expected one of: {allowed}",
             )
 
-        max_drones = self._optional_positive_integer(
+        parsed_max_drones = self._optional_positive_integer(
             metadata, "max_drones", 1, line_number
+        )
+        # The current subject states that start and end hubs are unlimited even
+        # if a max_drones metadata value is present, so keep a neutral stored
+        # value instead of preserving an ignored limit.
+        max_drones = (
+            1
+            if hub_type in {"start_hub", "end_hub"}
+            else parsed_max_drones
         )
         color = metadata.get("color")
         if color == "":

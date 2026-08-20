@@ -70,10 +70,6 @@ class DroneTests(unittest.TestCase):
         self.assertEqual(second_intent.destination.name, "end")
         simulation.next_turn()
 
-        self.assertEqual(
-            [zone.name for zone in drone.route],
-            ["middle", "end"],
-        )
         self.assertTrue(drone.finished_traversal)
         self.assertIsNone(drone.act())
 

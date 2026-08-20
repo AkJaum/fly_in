@@ -2,7 +2,7 @@
 
 > Este documento e a referencia principal para o desenvolvimento do projeto
 > **Fly-in**. Toda decisao de arquitetura, implementacao, teste e documentacao
-> deve respeitar os requisitos descritos aqui.
+> deve respeitar os requisitos descritos aqui e acima de tudo, respeitar o que está no en.subject.pdf.
 
 ## 1. Objetivo do Projeto
 

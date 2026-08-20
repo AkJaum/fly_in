@@ -11,6 +11,8 @@ movement of all drones from a start hub to an end hub.
 The goal of the project is to move every drone to the end hub in the fewest
 possible simulation turns while respecting:
 
+- unlimited occupancy on the start and end hubs, even if `max_drones`
+  metadata is present there;
 - zone capacities through `max_drones`;
 - connection capacities through `max_link_capacity`;
 - blocked zones, which cannot be entered;
@@ -39,6 +41,8 @@ Implemented and working:
 - zone and connection capacity checks;
 - output lines in the subject format;
 - output history written to `outputs.txt`;
+- terminal-only performance metrics for total turns, average turns per drone,
+  and moved drones per turn;
 - unit tests for parser, drone behavior, and simulation behavior;
 - Makefile targets for installation, execution, debugging, cleanup, linting, and
   tests.
@@ -51,8 +55,6 @@ Still needs improvement before final evaluation:
   mainly on each drone's local shortest route;
 - add stronger deadlock-prevention and recovery strategies for complex maps;
 - benchmark easy, medium, hard, and challenger maps against the subject targets;
-- compute or display optional performance metrics such as total turns, average
-  turns per drone, and moved drones per turn;
 - expand tests with larger maps, overlapping routes, and difficult capacity
   scenarios;
 - run and keep the project clean under the exact peer-evaluation environment.
@@ -88,8 +90,9 @@ Run with another map:
 make run MAP=path/to/map.txt
 ```
 
-The simulator prints each turn to the terminal and writes the same movement
-history to `outputs.txt`.
+The simulator prints each turn and a final performance summary to the terminal.
+Only the movement history is written to `outputs.txt`, keeping the file in the
+subject output format.
 
 ### Debug
 
@@ -127,10 +130,10 @@ Example:
 
 ```text
 nb_drones: 5
-start_hub: start 0 0 [color=green max_drones=5]
+start_hub: start 0 0 [color=green]
 hub: junction 1 0 [color=yellow max_drones=2]
 hub: correct_path 2 0 [color=blue]
-end_hub: goal 3 0 [color=green max_drones=5]
+end_hub: goal 3 0 [color=green]
 connection: start-junction [max_link_capacity=2]
 connection: junction-correct_path
 connection: correct_path-goal
@@ -160,7 +163,9 @@ Supported connection metadata:
 - `max_link_capacity=<positive_integer>`
 
 Zone names must not contain spaces or dashes because dashes are used by the
-connection syntax.
+connection syntax. If `max_drones` is present on `start_hub` or `end_hub`, the
+parser accepts it but ignores the value because both endpoints are unlimited in
+the current subject.
 
 ## Algorithm and Implementation Strategy
 
@@ -227,6 +232,10 @@ D1-goal D2-correct_path
 
 Drones that do not move during a turn are omitted. Drones that reach the end hub
 are considered delivered and are no longer scheduled.
+
+After the movement lines, the terminal displays the total number of turns, the
+average delivery turn across all drones, and how many drones moved in each
+turn. These metrics are never written to `outputs.txt`.
 
 ## Visual Representation
 

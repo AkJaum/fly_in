@@ -116,8 +116,8 @@ connection: middle-end
             all(drone.finished_traversal for drone in simulation.drones)
         )
 
-    def test_start_configures_and_prints_turns(self) -> None:
-        """Automatically configure and print only movement output lines."""
+    def test_start_prints_terminal_only_metrics(self) -> None:
+        """Print movements and metrics without persisting statistics."""
         self.map_path.write_text(self.VALID_MAP, encoding="utf-8")
         simulation = self.simulation()
 
@@ -127,11 +127,24 @@ connection: middle-end
         self.assertTrue(simulation.is_configured)
         self.assertEqual(
             output.getvalue().splitlines(),
-            ["D1-middle D2-middle", "D1-end", "D2-end"],
+            [
+                "D1-middle D2-middle",
+                "D1-end",
+                "D2-end",
+                "------------------------------",
+                "Performance metrics",
+                "Total turns: 3",
+                "Average turns per drone: 2.50",
+                "Moved drones per turn:",
+                "Turn 1: 2",
+                "Turn 2: 1",
+                "Turn 3: 1",
+                "------------------------------",
+            ],
         )
         self.assertEqual(
             self.output_path.read_text(encoding="utf-8").splitlines(),
-            simulation.turn_outputs,
+            ["D1-middle D2-middle", "D1-end", "D2-end"],
         )
 
     def test_reconfiguration_clears_turn_history(self) -> None:
@@ -145,6 +158,8 @@ connection: middle-end
 
         self.assertEqual(simulation.turn_number, 0)
         self.assertEqual(simulation.turn_outputs, [])
+        self.assertEqual(simulation.moved_drones_per_turn, [])
+        self.assertEqual(simulation.drone_completion_turns, [])
         self.assertEqual(len(simulation.active_drones), 2)
         self.assertEqual(self.output_path.read_text(encoding="utf-8"), "")
 
@@ -165,6 +180,33 @@ connection: middle-end
         self.assertEqual(simulation.next_turn(), "D1-middle")
         self.assertEqual(simulation.next_turn(), "D1-end D2-middle")
         self.assertEqual(len(simulation.graph.zones["middle"].drones_in), 1)
+
+    def test_start_and_end_ignore_max_drones_metadata(self) -> None:
+        """Keep start and end hubs effectively unlimited despite metadata."""
+        self.map_path.write_text(
+            "nb_drones: 3\n"
+            "start_hub: start 0 0 [max_drones=1]\n"
+            "hub: middle 1 0 [max_drones=3]\n"
+            "end_hub: end 2 0 [max_drones=1]\n"
+            "connection: start-middle [max_link_capacity=3]\n"
+            "connection: middle-end [max_link_capacity=3]\n",
+            encoding="utf-8",
+        )
+        simulation = self.simulation()
+        simulation.configure()
+
+        start_zone = simulation.graph.start_zone
+        self.assertIsNotNone(start_zone)
+        assert start_zone is not None
+        self.assertEqual(len(start_zone.drones_in), 3)
+        self.assertEqual(
+            simulation.next_turn(),
+            "D1-middle D2-middle D3-middle",
+        )
+        self.assertEqual(
+            simulation.next_turn(),
+            "D1-end D2-end D3-end",
+        )
 
     def test_restricted_zone_uses_connection_then_arrives(self) -> None:
         """Enter a connection first and reach its restricted zone next turn."""
@@ -191,6 +233,64 @@ connection: middle-end
         self.assertEqual(current_zone.name, "tunnel")
         self.assertEqual(len(simulation.graph.connections[0].drones_in), 0)
         self.assertFalse(drone.finished_traversal)
+
+    def test_global_scheduler_splits_equal_paths(self) -> None:
+        """Spread drones across equal routes instead of queueing one branch."""
+        self.map_path.write_text(
+            "nb_drones: 2\n"
+            "start_hub: start 0 0\n"
+            "hub: north 1 1\n"
+            "hub: south 1 -1\n"
+            "hub: north_mid 2 1\n"
+            "hub: south_mid 2 -1\n"
+            "end_hub: end 3 0\n"
+            "connection: start-north\n"
+            "connection: start-south\n"
+            "connection: north-north_mid\n"
+            "connection: south-south_mid\n"
+            "connection: north_mid-end\n"
+            "connection: south_mid-end\n",
+            encoding="utf-8",
+        )
+        simulation = self.simulation()
+        simulation.configure()
+
+        self.assertEqual(
+            simulation.next_turn(),
+            "D1-north D2-south",
+        )
+
+    def test_global_scheduler_uses_longer_route_for_better_throughput(
+        self,
+    ) -> None:
+        """Replan globally when waiting on the best local path hurts flow."""
+        self.map_path.write_text(
+            "nb_drones: 2\n"
+            "start_hub: start 0 0\n"
+            "hub: short 1 0\n"
+            "hub: long_1 1 1\n"
+            "hub: long_2 2 1\n"
+            "hub: merge 2 0 [max_drones=2]\n"
+            "end_hub: end 3 0\n"
+            "connection: start-short\n"
+            "connection: short-merge\n"
+            "connection: start-long_1\n"
+            "connection: long_1-long_2\n"
+            "connection: long_2-merge\n"
+            "connection: merge-end [max_link_capacity=2]\n",
+            encoding="utf-8",
+        )
+        simulation = self.simulation()
+        simulation.configure()
+
+        self.assertEqual(
+            simulation.next_turn(),
+            "D1-short D2-long_1",
+        )
+        self.assertEqual(simulation.next_turn(), "D1-merge D2-long_2")
+        self.assertEqual(simulation.next_turn(), "D1-end D2-merge")
+        self.assertEqual(simulation.next_turn(), "D2-end")
+        self.assertEqual(simulation.turn_number, 4)
 
     def test_execute_returns_failure_for_invalid_input(self) -> None:
         """Translate configuration failures into a nonzero status code."""

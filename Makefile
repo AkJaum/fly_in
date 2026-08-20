@@ -43,4 +43,4 @@ lint-strict:
 	@$(PYTHON) -m mypy src tests --strict
 
 test:
-	$(PYTHON) -m unittest discover -v
+	$(PYTHON) -m tests.friendly_runner

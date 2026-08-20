@@ -44,10 +44,26 @@ connection: tunnel-goal
         self.assertEqual(hubs[1]["kind"], "priority")
         self.assertEqual(hubs[1]["y"], -2)
         self.assertEqual(hubs[2]["kind"], "restricted")
+        self.assertEqual(hubs[0]["max_drones"], 1)
         self.assertEqual(hubs[3]["max_drones"], 1)
         self.assertEqual(
             parsed["connections"][0]["max_link_capacity"], 2
         )
+
+    def test_start_and_end_ignore_max_drones_metadata(self) -> None:
+        """Accept but ignore max_drones metadata on start and end hubs."""
+        parsed = self.parse(
+            "nb_drones: 2\n"
+            "start_hub: start 0 0 [max_drones=99]\n"
+            "hub: middle 1 0 [max_drones=2]\n"
+            "end_hub: end 2 0 [max_drones=7]\n"
+            "connection: start-middle\n"
+            "connection: middle-end\n"
+        )
+
+        self.assertEqual(parsed["hubs"][0]["max_drones"], 1)
+        self.assertEqual(parsed["hubs"][1]["max_drones"], 2)
+        self.assertEqual(parsed["hubs"][2]["max_drones"], 1)
 
     def test_disconnected_map_is_parser_valid(self) -> None:
         """Leave graph reachability checks to the graph or simulation layer."""
