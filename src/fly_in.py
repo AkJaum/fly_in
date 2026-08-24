@@ -280,12 +280,12 @@ class Simulation:
             ) / depth
 
         route_connections = [intent.connection]
-        current_zone = intent.destination
+        route_cursor = intent.destination
         for next_zone in route_zones[1:3]:
             route_connections.append(
-                self.graph.connection_between(current_zone, next_zone)
+                self.graph.connection_between(route_cursor, next_zone)
             )
-            current_zone = next_zone
+            route_cursor = next_zone
         for depth, connection in enumerate(route_connections, start=1):
             connection_load = self._projected_connection_usage(
                 connection,
@@ -299,7 +299,24 @@ class Simulation:
         if drone.previous_zone is intent.destination:
             backtrack_penalty = max(0.0, 4.5 - drone.wait_turns)
 
-        return remaining_cost + congestion_penalty + backtrack_penalty
+        detour_penalty = 0.0
+        current_zone = drone.current_zone
+        if (
+            current_zone is not None
+            and current_zone is not self.graph.start_zone
+        ):
+            current_cost = self.graph.shortest_cost_from(current_zone)
+            if remaining_cost > current_cost:
+                # Inside the graph, briefly waiting is usually cheaper than
+                # entering a cycle. Wait aging still permits a later detour.
+                detour_penalty = 1.0
+
+        return (
+            remaining_cost
+            + congestion_penalty
+            + backtrack_penalty
+            + detour_penalty
+        )
 
     def _wait_score(self, drone: Drone) -> float:
         """Estimate when waiting is still better than taking a detour."""

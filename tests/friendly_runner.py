@@ -36,6 +36,20 @@ class FriendlyTestResult(unittest.TextTestResult):
             "src/fly_in.py :: Simulation",
             "src/ZoneHub.py :: Zone/Connection",
         ),
+        "test_benchmarks": (
+            "src/fly_in.py :: Simulation scheduler",
+            "maps/ :: Subject 1.6 benchmark maps",
+        ),
+        "tests.test_benchmarks": (
+            "src/fly_in.py :: Simulation scheduler",
+            "maps/ :: Subject 1.6 benchmark maps",
+        ),
+        "test_visualization": (
+            "src/visualization.py :: BrowserSimulation/SvgMapRenderer",
+        ),
+        "tests.test_visualization": (
+            "src/visualization.py :: BrowserSimulation/SvgMapRenderer",
+        ),
     }
 
     def startTest(self, test: unittest.case.TestCase) -> None:

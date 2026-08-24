@@ -38,26 +38,23 @@ Implemented and working:
 - priority-zone preference through lower pathfinding weight;
 - restricted-zone movement as a two-turn transition through the connection;
 - turn-by-turn simultaneous movement resolution;
+- global capacity-aware route distribution with congestion and cycle-detour
+  penalties;
 - zone and connection capacity checks;
 - output lines in the subject format;
 - output history written to `outputs.txt`;
 - terminal-only performance metrics for total turns, average turns per drone,
   and moved drones per turn;
-- unit tests for parser, drone behavior, and simulation behavior;
+- NiceGUI browser visualization with map selection, playback controls,
+  per-drone positions, animated turn movements, live status, and custom SVG;
+- unit tests for parser, drone behavior, simulation behavior, capacity
+  invariants, visualization adapters, and every supplied benchmark map;
 - Makefile targets for installation, execution, debugging, cleanup, linting, and
   tests.
 
-Still needs improvement before final evaluation:
-
-- add colored terminal output or a graphical view to fully satisfy the visual
-  representation requirement;
-- improve path distribution across multiple available routes instead of relying
-  mainly on each drone's local shortest route;
-- add stronger deadlock-prevention and recovery strategies for complex maps;
-- benchmark easy, medium, hard, and challenger maps against the subject targets;
-- expand tests with larger maps, overlapping routes, and difficult capacity
-  scenarios;
-- run and keep the project clean under the exact peer-evaluation environment.
+Local verification is complete against the supplied subject 1.6 maps and the
+documented Makefile workflow. As with every 42 project, the same commands should
+still be rerun on the evaluation machine before the defense.
 
 ## Instructions
 
@@ -76,6 +73,10 @@ Development dependencies are listed in `requirements.txt`.
 make install
 ```
 
+This creates an isolated `.venv` directory and installs the pinned dependency
+ranges from `requirements.txt`. Later Makefile commands automatically use that
+environment when it exists.
+
 ### Run
 
 Run with the default `map.txt`:
@@ -93,6 +94,66 @@ make run MAP=path/to/map.txt
 The simulator prints each turn and a final performance summary to the terminal.
 Only the movement history is written to `outputs.txt`, keeping the file in the
 subject output format.
+
+### Browser Visualizer
+
+Install dependencies once and start the graphical interface:
+
+```sh
+make install
+make web
+```
+
+Open <http://127.0.0.1:8080> if the browser does not open automatically. The
+interface provides:
+
+- a selector for `map.txt` and every supplied benchmark map;
+- **Load**, **Step**, **Play**, **Pause**, and **Reset** controls;
+- turn, moved, waiting, in-transit, active, and delivered counters;
+- an SVG network generated from the map coordinates;
+- the exact metadata color, type, occupancy, and capacity of every zone;
+- labelled connection usage and capacity;
+- visible `D<ID>` markers at their current zones or connections;
+- quadcopter silhouettes with blinking blue active, cyan moved, rose waiting,
+  yellow transit, and green delivered status lights;
+- a viewport-sized cockpit that keeps the controls, metrics, latest movement,
+  and complete live graph visible together without scrolling on desktop;
+- whiteboard navigation with mouse-wheel zoom, click-and-drag pan, `−`/`+`
+  controls, and double-click or target-button reset;
+- semantic zoom that progressively reveals zone details, connection capacities,
+  and drone identifiers instead of overlapping them on dense maps;
+- staged origin-to-destination animations with a departure pulse, parallel
+  travel lanes, arrival pulse, and final-position reveal;
+- explicit two-step feedback for restricted transit and arrival;
+- a per-turn explanation and exact location manifest for every drone;
+- the subject-format movement line and a scrollable turn history.
+
+An evaluator map outside the supplied collection can be opened directly:
+
+```sh
+make web MAP=/path/to/evaluation-map.txt
+```
+
+To choose a different port with Make:
+
+```sh
+make web PORT=9000
+```
+
+To prevent automatic browser opening:
+
+```sh
+./.venv/bin/python -m src.web_app --map map.txt --port 9000 --no-open
+```
+
+For a deterministic presentation screenshot, start at a specific turn:
+
+```sh
+./.venv/bin/python -m src.web_app --map map.txt --turn 1
+```
+
+The evaluator-facing CLI remains `make run`. The browser is an additional
+presentation mode and does not change terminal output or routing behavior.
 
 ### Debug
 
@@ -203,9 +264,42 @@ handled as connection transit: the first turn prints the connection name and the
 next turn forces arrival at the restricted destination.
 
 The current approach is simple and readable, but it is not yet a complete
-global optimizer. It recalculates a shortest remaining route when a drone does
-not already have one, and it does not yet perform advanced multi-path balancing
-or long-horizon scheduling.
+long-horizon optimizer. The global scheduler compares all reachable next steps,
+projects zone and connection usage, distributes drones across useful parallel
+routes, and briefly prefers waiting over a costlier interior detour that would
+send a drone around a cycle. Aging the wait score eventually enables a detour
+when the shortest corridor remains congested.
+
+Shortest-path results are cached per starting zone. One uncached Dijkstra query
+costs `O((V + E) log V)` time. A typical scheduling pass costs
+`O(D^2 * degree)` because projected capacity checks inspect the accepted drone
+set; retry-heavy turns have a worst case of `O(D^3 * degree)`. Cached routes may
+use `O(V^2)` memory in the worst case, while live simulation state uses
+`O(V + E + D)`.
+
+## Example Input and Expected Output
+
+Given this map:
+
+```text
+nb_drones: 2
+start_hub: start 0 0
+hub: middle 1 0
+end_hub: goal 2 0
+connection: start-middle
+connection: middle-goal
+```
+
+the movement history in `outputs.txt` is:
+
+```text
+D1-middle
+D1-goal D2-middle
+D2-goal
+```
+
+The terminal then prints performance metrics separately. Stationary drones are
+omitted, which is why `D2` does not appear on the first turn.
 
 ## Output Format
 
@@ -239,15 +333,114 @@ turn. These metrics are never written to `outputs.txt`.
 
 ## Visual Representation
 
-The project currently provides a textual turn-by-turn representation in the
-terminal and mirrors it to `outputs.txt`. This already helps peer reviewers
-trace which drone moved at each turn and verify the subject output format.
+The mandatory visual feedback is provided by the NiceGUI browser page launched
+with `make web`. It runs in a normal browser and renders custom SVG from the
+integer coordinates in the map. No graph or automatic-layout library is used.
+The evaluator-facing algorithm remains available separately through `make run`.
 
-The next required improvement is a richer visual representation. The planned
-minimum is colored terminal output based on the optional `color=<value>`
-metadata, with clear feedback for normal hubs, priority hubs, restricted hubs,
-blocked hubs, and delivered drones. A later improvement could add a graphical
-view of the graph and live drone positions.
+The view makes the simulation state explicit rather than representing drones
+only as occupancy totals:
+
+- every zone shows its name, kind, occupancy/capacity, and configured metadata
+  color; normal zones are circular, priority zones are hexagonal, restricted
+  zones are diamond-shaped, and blocked zones are crossed squares;
+- double rings identify the unlimited start/end hubs, while a dashed zone is
+  blocked;
+- connections show live `usage/capacity` values and expose their full names on
+  hover;
+- individual quadcopter markers orbit their current zone with their `D<ID>`
+  visible underneath; blinking onboard lights communicate active, moved,
+  waiting, restricted-transit, and delivered states without a legend;
+- each turn separates departure, travel, and arrival into visible phases before
+  revealing the drone at its final position; simultaneous drones on the same
+  route receive parallel lanes, while restricted transit uses yellow;
+- destination pulses, moved/waiting/transit counters, a plain-language turn
+  table, a complete drone-position manifest, and raw output history make both
+  movement and scheduling decisions inspectable;
+- restricted movement is presented as "turn 1 of 2" on the connection and
+  "turn 2 of 2" on arrival, matching the subject timing rule.
+
+SVG markers are limited to 16 around one location to keep exceptionally large
+fleets readable; any remainder is shown as `+N`. The adjacent manifest still
+lists every drone and its exact location, so state is never hidden.
+
+On desktop, the page uses `100dvh` to keep the map controls, live counters,
+latest subject-format output, and graphical network inside the first viewport.
+The movement explanation, full manifest, visual key, and history remain below
+the fold. Narrow screens switch to a scrollable responsive layout so controls
+are not compressed into unusable sizes.
+
+The graph behaves like a whiteboard. Scroll over it to zoom around the pointer,
+hold the primary mouse button and drag to pan, use `−`/`+` for keyboard-friendly
+zoom, and double-click the graph or press the target button to return to the
+fitted view. Zoom and pan are stored on the graph container, so stepping or
+playing the simulation does not unexpectedly move the camera. Dense maps start
+with secondary labels hidden; details appear progressively as the user zooms
+in. Above the fitted scale, coordinates spread apart while nodes, drones, and
+labels retain a stable on-screen size, so zoom actually resolves collisions
+instead of merely enlarging them. Every full value remains available in the
+tables and SVG tooltips.
+
+The implementation deliberately keeps the evaluated algorithm independent:
+
+- `src/visualization.py` contains `BrowserSimulation`, the typed adapter around
+  `Simulation`, and `SvgMapRenderer`, the dependency-free SVG renderer;
+- `src/web_app.py` contains only NiceGUI layout, styling, controls, and server
+  startup;
+- `src/fly_in.py`, `src/graph.py`, and `src/drone.py` remain the sole owners of
+  scheduling, graph logic, pathfinding, and capacity enforcement.
+
+Each browser action calls the same public lifecycle used by the CLI:
+`configure()` loads the selected map, and `next_turn()` performs one validated
+turn before the view reads the resulting domain state. The visualizer never
+calculates a route or approves a movement.
+
+The current web mode is designed for the local, single-evaluator workflow. The
+domain registries are process-global, so supporting multiple independent users
+on a public deployment would first require making those registries
+simulation-scoped.
+
+### Modifying and Improving the Interface
+
+Use these extension points to keep visual changes away from core logic:
+
+- edit `PAGE_STYLES` in `src/web_app.py` for colors, spacing, typography, and
+  responsive behavior;
+- edit `FlyInWebView._build_controls()` to add controls such as playback speed;
+- edit `FlyInWebView._build_status_cards()` to add metrics;
+- edit `SvgMapRenderer._zone_markup()` to change zone appearance;
+- edit `SvgMapRenderer._connection_markup()` to change connections and transit;
+- add values to `SimulationSnapshot` when the UI needs more read-only state.
+
+Good next visual improvements are a speed slider, map upload, mobile-specific
+controls, and an end-of-run metrics chart. These should remain presentation-only
+and must not introduce a library that performs graph routing or layout.
+
+## Subject 1.6 Compatibility and Benchmarks
+
+Version 1.5 clarified that `max_drones` metadata on the start and end hubs is
+accepted but ignored because both endpoints have unlimited occupancy. Version
+1.6 additionally requires a paired example input and expected output in this
+README. The parser, tests, and documentation cover both changes.
+
+The deterministic test suite currently records these turn counts against the
+stricter subject 1.6 targets:
+
+| Map | Result | Target |
+| --- | ---: | ---: |
+| Linear path | 4 | <= 6 |
+| Simple fork | 4 | <= 8 |
+| Basic capacity | 4 | <= 6 |
+| Dead end trap | 8 | <= 12 |
+| Circular loop | 15 | <= 15 |
+| Priority puzzle | 7 | <= 12 |
+| Maze nightmare | 13 | <= 30 |
+| Capacity hell | 18 | <= 35 |
+| Ultimate challenge | 26 | <= 45 |
+| The Impossible Dream (optional) | 44 | < 45 |
+
+Run `make test` to execute these benchmark checks together with per-turn zone,
+connection, and restricted-transit invariants.
 
 ## Resources
 
@@ -265,12 +458,15 @@ Classic references used or useful for this project:
   <https://flake8.pycqa.org/>
 - Mypy documentation
   <https://mypy.readthedocs.io/>
+- NiceGUI documentation
+  <https://nicegui.io/documentation>
 - Dijkstra's shortest path algorithm overview
   <https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm>
 
 AI usage:
 
 - AI was used as a development assistant to organize implementation steps,
-  review requirements from the subject, draft tests, and improve documentation.
+  review requirements from the subject, draft tests, build the browser
+  presentation adapter, and improve documentation.
 - AI-generated suggestions were checked against the subject requirements and the
   local test suite before being kept.

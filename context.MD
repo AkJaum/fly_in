@@ -2,7 +2,8 @@
 
 > Este documento e a referencia principal para o desenvolvimento do projeto
 > **Fly-in**. Toda decisao de arquitetura, implementacao, teste e documentacao
-> deve respeitar os requisitos descritos aqui e acima de tudo, respeitar o que está no en.subject.pdf.
+> deve respeitar os requisitos descritos aqui e, acima de tudo, o
+> `en.subject-1.6.pdf`, que e a versao normativa atual do projeto.
 
 ## 1. Objetivo do Projeto
 
@@ -289,8 +290,55 @@ Regras adicionais:
 O projeto deve fornecer feedback visual. As opcoes incluem:
 
 - cores no terminal;
-- interface grafica com Tkinter;
-- interface grafica com Pygame.
+- interface grafica local;
+- interface web em navegador.
+
+A implementacao atual usa NiceGUI somente como camada de apresentacao e gera o
+mapa em SVG proprio a partir das coordenadas do subject. Nenhuma funcionalidade
+de grafo, pathfinding, scheduling ou layout automatico e delegada a biblioteca.
+O fluxo obrigatorio de terminal continua independente em `src.fly_in`.
+
+O SVG representa cada drone por seu identificador `D<ID>` na zona ou conexao
+que ele realmente ocupa. Cada transicao separa partida, deslocamento e chegada:
+pulso na origem, trajeto animado e pulso no destino antes de revelar a posicao
+final. Drones simultaneos na mesma rota recebem faixas paralelas. Movimentos
+para zonas restritas usam amarelo e continuam divididos visualmente entre
+entrada na conexao (turno 1 de 2) e chegada na zona (turno 2 de 2). A interface
+tambem exibe:
+
+- cores vindas diretamente do metadado `color` de cada zona;
+- tipo, ocupacao e capacidade de zonas;
+- nome, uso e capacidade de conexoes;
+- contadores de drones movidos, parados, em transito e entregues;
+- tabela explicativa dos movimentos do turno;
+- manifesto com a posicao exata de todos os drones;
+- historico no formato de output exigido pelo subject.
+
+A camada visual observa o estado produzido por `Simulation.next_turn()`; ela
+nao calcula rotas, aceita movimentos nem altera regras de capacidade. Assim,
+mudancas de apresentacao permanecem isoladas da logica avaliada.
+
+Em telas desktop, o cockpit deve ocupar `100dvh` menos o cabecalho e manter no
+mesmo viewport: seletor de mapa, controles, metricas, ultimo movimento e grafo
+completo. Tabelas detalhadas, manifesto, chave visual e historico ficam abaixo
+da dobra. Em telas estreitas, a pagina volta a permitir altura natural para nao
+comprimir controles ou informacoes.
+
+O grafo funciona como um quadro branco: a roda do mouse aplica zoom ao redor do
+cursor, arrastar com o botao primario move o mapa, os botoes `-` e `+` oferecem
+controle alternativo e clique duplo ou o botao de alvo recentraliza a visao. A
+camera persiste durante `Step` e `Play`, mesmo quando o SVG do novo turno e
+renderizado. Em mapas densos, o zoom semantico oculta detalhes secundarios na
+visao geral e revela progressivamente detalhes de zonas, capacidades de links e
+IDs dos drones ao aproximar. Acima da escala ajustada, as coordenadas se afastam
+mas nos, drones e rotulos mantem tamanho estavel na tela; assim, aproximar
+resolve colisoes em vez de apenas amplia-las. Tooltips, tabelas e manifesto
+preservam os valores completos independentemente do nivel de zoom.
+
+As zonas precisam ser reconheciveis por silhueta alem da cor: circulo normal,
+hexagono prioritario, losango restrito e quadrado cruzado bloqueado. Drones sao
+desenhados como quadricopteros, mostram `D<ID>` e usam luzes piscantes de estado:
+azul ativo, ciano movido, rosa aguardando, amarelo em transito e verde entregue.
 
 A visualizacao deve facilitar a compreensao de:
 
@@ -375,7 +423,9 @@ O README deve conter, no minimo:
 - descricao detalhada das escolhas de algoritmos;
 - estrategia de implementacao;
 - documentacao da representacao visual e de como ela melhora a experiencia do
-  usuario.
+  usuario;
+- exemplo de input acompanhado do output esperado, demonstrando o funcionamento
+  do programa.
 
 Secoes adicionais podem incluir exemplos de uso, funcionalidades, arquitetura,
 testes e decisoes tecnicas.
@@ -393,22 +443,23 @@ Possibilidades de bonus:
 
 ## 14. Checklist de Desenvolvimento
 
-- [ ] Projeto 100% orientado a objetos.
-- [ ] Nenhuma biblioteca de grafos utilizada.
-- [ ] Type hints completos e `mypy` sem erros.
-- [ ] Codigo aprovado pelo `flake8`.
-- [ ] Docstrings PEP 257 em todas as classes, funcoes e metodos.
-- [ ] `Makefile` com `install`, `run`, `debug`, `clean` e `lint`.
-- [ ] Parser valida toda a sintaxe e informa linha e causa dos erros.
-- [ ] Exatamente um hub inicial e um hub final.
-- [ ] Capacidades de zonas e conexoes respeitadas.
-- [ ] Movimentos restritos ocupam a conexao e terminam obrigatoriamente.
-- [ ] Movimentos simultaneos liberam e ocupam espacos corretamente.
-- [ ] Zonas prioritarias sao preferidas sem alterar a duracao real de 1 turno.
-- [ ] Zonas bloqueadas nunca sao acessadas.
-- [ ] Simulacao evita conflitos e deadlocks.
-- [ ] Output segue exatamente o formato exigido.
-- [ ] Feedback visual implementado.
-- [ ] README em ingles com todas as secoes obrigatorias.
-- [ ] Mapas validos, invalidos e casos-limite testados.
-- [ ] Benchmarks medidos e documentados.
+- [x] Projeto 100% orientado a objetos.
+- [x] Nenhuma biblioteca de grafos utilizada.
+- [x] Type hints completos e `mypy` sem erros.
+- [x] Codigo aprovado pelo `flake8`.
+- [x] Docstrings PEP 257 em todas as classes, funcoes e metodos.
+- [x] `Makefile` com `install`, `run`, `debug`, `clean` e `lint`.
+- [x] Parser valida toda a sintaxe e informa linha e causa dos erros.
+- [x] Exatamente um hub inicial e um hub final.
+- [x] Capacidades de zonas e conexoes respeitadas.
+- [x] Movimentos restritos ocupam a conexao e terminam obrigatoriamente.
+- [x] Movimentos simultaneos liberam e ocupam espacos corretamente.
+- [x] Zonas prioritarias sao preferidas sem alterar a duracao real de 1 turno.
+- [x] Zonas bloqueadas nunca sao acessadas.
+- [x] Simulacao evita conflitos e deadlocks nos mapas fornecidos.
+- [x] Output segue exatamente o formato exigido.
+- [x] Feedback visual implementado em navegador com NiceGUI e SVG proprio.
+- [x] README em ingles com todas as secoes obrigatorias.
+- [x] README com exemplo de input e output esperado exigido pela versao 1.6.
+- [x] Mapas validos, invalidos e casos-limite testados.
+- [x] Benchmarks medidos e documentados.
