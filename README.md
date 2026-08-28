@@ -107,21 +107,28 @@ make web
 Open <http://127.0.0.1:8080> if the browser does not open automatically. The
 interface provides:
 
-- a selector for `map.txt` and every supplied benchmark map;
-- **Load**, **Step**, **Play**, **Pause**, and **Reset** controls;
+- a selector for `map.txt` and every supplied benchmark map; changing the
+  selection immediately pauses playback and loads that map;
+- **Step**, **Play**, **Pause**, and **Reset** controls;
 - turn, moved, waiting, in-transit, active, and delivered counters;
-- an SVG network generated from the map coordinates;
+- an adaptive SVG network generated from the map coordinates, with minimum
+  spacing between coordinate steps on both compact and very large maps;
 - the exact metadata color, type, occupancy, and capacity of every zone;
 - labelled connection usage and capacity;
 - visible `D<ID>` markers at their current zones or connections;
 - quadcopter silhouettes with blinking blue active, cyan moved, rose waiting,
   yellow transit, and green delivered status lights;
-- a viewport-sized cockpit that keeps the controls, metrics, latest movement,
-  and complete live graph visible together without scrolling on desktop;
+- a viewport-sized cockpit that keeps the controls, metrics, and complete live
+  graph visible together without scrolling on desktop;
 - whiteboard navigation with mouse-wheel zoom, click-and-drag pan, `−`/`+`
   controls, and double-click or target-button reset;
+- a fullscreen simulation mode that reserves the screen for the graph and a
+  single top utility bar containing map, playback, status, zoom, and viewport
+  controls;
 - semantic zoom that progressively reveals zone details, connection capacities,
-  and drone identifiers instead of overlapping them on dense maps;
+  and drone identifiers instead of overlapping them on dense maps; dense
+  overviews use one occupancy badge per location until individual drones can be
+  shown clearly;
 - staged origin-to-destination animations with a departure pulse, parallel
   travel lanes, arrival pulse, and final-position reveal;
 - explicit two-step feedback for restricted transit and arrival;
@@ -277,6 +284,9 @@ set; retry-heavy turns have a worst case of `O(D^3 * degree)`. Cached routes may
 use `O(V^2)` memory in the worst case, while live simulation state uses
 `O(V + E + D)`.
 
+For the complete implementation walkthrough, class reference, scheduling flow,
+and extension guide, see [Fly-in Implementation Guide](IMPLEMENTATION_GUIDE.md).
+
 ## Example Input and Expected Output
 
 Given this map:
@@ -361,25 +371,45 @@ only as occupancy totals:
   "turn 2 of 2" on arrival, matching the subject timing rule.
 
 SVG markers are limited to 16 around one location to keep exceptionally large
-fleets readable; any remainder is shown as `+N`. The adjacent manifest still
-lists every drone and its exact location, so state is never hidden.
+fleets readable; any remainder is shown as `+N`. Dense fitted views replace the
+individual fleet with a compact occupancy badge, then reveal the markers after
+zooming in. The adjacent manifest still lists every drone and its exact
+location, so state is never hidden.
 
-On desktop, the page uses `100dvh` to keep the map controls, live counters,
-latest subject-format output, and graphical network inside the first viewport.
-The movement explanation, full manifest, visual key, and history remain below
-the fold. Narrow screens switch to a scrollable responsive layout so controls
-are not compressed into unusable sizes.
+On desktop, the page uses `100dvh` and a wide content shell to keep the enlarged
+top utility bar and graphical network inside the first viewport. The utility
+bar combines automatic map loading, playback, current status, turn counters,
+zoom, reset, and fullscreen controls in one surface. Its selector, playback
+buttons, status pills, and viewport buttons use expanded width and height;
+status labels stack above their values so the larger components still remain on
+one desktop row. Fullscreen mode hides the page
+header, graph heading, and detailed sections so only that bar and the live
+simulation remain visible; press the fullscreen button again or `Escape` to
+leave native browser fullscreen. The movement explanation, full manifest,
+visual key, and history remain below the fold in normal mode. Narrow screens
+wrap the utility bar and return to natural page height so controls are not
+compressed into unusable sizes.
 
 The graph behaves like a whiteboard. Scroll over it to zoom around the pointer,
 hold the primary mouse button and drag to pan, use `−`/`+` for keyboard-friendly
 zoom, and double-click the graph or press the target button to return to the
-fitted view. Zoom and pan are stored on the graph container, so stepping or
-playing the simulation does not unexpectedly move the camera. Dense maps start
-with secondary labels hidden; details appear progressively as the user zooms
-in. Above the fitted scale, coordinates spread apart while nodes, drones, and
-labels retain a stable on-screen size, so zoom actually resolves collisions
-instead of merely enlarging them. Every full value remains available in the
-tables and SVG tooltips.
+fitted view. The zoom buttons execute directly in the browser, avoiding a
+server round trip. Zoom and pan are stored on the graph container, so stepping
+or playing the simulation does not unexpectedly move the camera.
+
+Each rendered map publishes its own base canvas. Coordinate steps receive a
+minimum world-space gap, and the canvas expands to contain the resulting
+topology instead of squeezing every map into a fixed rectangle. The camera
+changes one SVG `viewBox` shared by zones, connections, labels, drone anchors,
+and movement overlays, so connections and zones cannot drift apart. Each drone
+cluster is translated once to the exact zone or connection coordinate; only
+its local orbit radius and marker glyph scale are adjusted for camera zoom.
+Drone glyphs grow progressively with zoom rather than remaining at a fixed
+screen size, and their local clearance grows by the same curve. Consequently, a
+drone stays visible and just outside its zoomed location instead of moving
+farther away or overlapping the zone. Dense maps start with secondary labels hidden
+and reveal details progressively as the user zooms in. Every full value remains
+available in the tables and SVG tooltips.
 
 The implementation deliberately keeps the evaluated algorithm independent:
 

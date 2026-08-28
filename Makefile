@@ -6,7 +6,7 @@ PYTHON := $(if $(wildcard $(VENV_PYTHON)),$(VENV_PYTHON),$(SYSTEM_PYTHON))
 MODULE := src.fly_in
 WEB_MODULE := src.web_app
 MAP ?= map.txt
-PORT ?= 8080
+PORT ?= 8085
 REQUIREMENTS := requirements.txt
 
 .PHONY: help install run web debug clean lint lint-strict test

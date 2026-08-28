@@ -1,5 +1,6 @@
 """UI-independent presentation helpers for the Fly-in simulation."""
 
+import hashlib
 import html
 import math
 import re
@@ -261,9 +262,16 @@ class BrowserSimulation:
 class SvgMapRenderer:
     """Render graph state as safe, dependency-free browser SVG markup."""
 
-    WIDTH = 1200.0
-    HEIGHT = 520.0
-    PADDING = 110.0
+    MIN_WIDTH = 1000.0
+    MIN_HEIGHT = 600.0
+    HORIZONTAL_GAP = 170.0
+    VERTICAL_GAP = 170.0
+    HORIZONTAL_PADDING = 150.0
+    VERTICAL_PADDING = 130.0
+    TARGET_ASPECT_RATIO = 2.25
+    ZONE_RADIUS = 39.0
+    DRONE_SCREEN_GAP = 42.0
+    DRONE_RING_GAP = 34.0
     MAX_DRONE_MARKERS = 16
     _SAFE_COLOR = re.compile(r"^[A-Za-z]+$")
     _KIND_COLORS = {
@@ -283,7 +291,9 @@ class SvgMapRenderer:
         if not zones:
             return self._empty_svg("No configured graph")
 
-        positions = self._scaled_positions(zones)
+        positions, canvas = self._adaptive_layout(zones)
+        canvas_x, canvas_y, canvas_width, canvas_height = canvas
+        layout_key = self._layout_key(zones, canvas)
         highlighted_connections = {
             location.name
             for transition in transitions
@@ -301,10 +311,19 @@ class SvgMapRenderer:
         transition_offsets = self._transition_offsets(transitions)
         parts = [
             f'<svg class="flyin-map{complexity_class}" '
-            'viewBox="0 0 1200 520" role="img" '
+            f'viewBox="{canvas_x:.1f} {canvas_y:.1f} '
+            f'{canvas_width:.1f} {canvas_height:.1f}" '
+            f'data-base-x="{canvas_x:.1f}" '
+            f'data-base-y="{canvas_y:.1f}" '
+            f'data-base-width="{canvas_width:.1f}" '
+            f'data-base-height="{canvas_height:.1f}" '
+            f'data-layout-key="{layout_key}" '
+            'preserveAspectRatio="xMidYMid meet" role="img" '
             'aria-label="Zoomable Fly-in live drone network">',
             self._definitions(),
-            '<rect width="1200" height="520" rx="24" '
+            f'<rect x="{canvas_x:.1f}" y="{canvas_y:.1f}" '
+            f'width="{canvas_width:.1f}" height="{canvas_height:.1f}" '
+            'rx="24" '
             'fill="url(#canvas-grid)"/>',
             self._turn_banner(simulation, transitions),
             '<g class="map-world"><g class="connections">',
@@ -382,34 +401,65 @@ class SvgMapRenderer:
             f'{delivered}/{simulation.nb_drones} delivered</text>'
         )
 
-    def _scaled_positions(
+    def _adaptive_layout(
         self,
         zones: list[Zone],
-    ) -> dict[Zone, tuple[float, float]]:
-        """Scale subject coordinates into the fixed SVG viewport."""
+    ) -> tuple[
+        dict[Zone, tuple[float, float]],
+        tuple[float, float, float, float],
+    ]:
+        """Preserve map geometry while guaranteeing readable node spacing."""
         x_values = [zone.pos[0] for zone in zones]
         y_values = [zone.pos[1] for zone in zones]
         minimum_x, maximum_x = min(x_values), max(x_values)
         minimum_y, maximum_y = min(y_values), max(y_values)
         x_span = maximum_x - minimum_x
         y_span = maximum_y - minimum_y
-        drawable_width = self.WIDTH - 2 * self.PADDING
-        drawable_height = self.HEIGHT - 2 * self.PADDING
 
-        return {
+        horizontal_gap = self.HORIZONTAL_GAP
+        vertical_gap = self.VERTICAL_GAP
+        if x_span and y_span:
+            content_width = x_span * horizontal_gap
+            required_height = content_width / self.TARGET_ASPECT_RATIO
+            vertical_gap = max(vertical_gap, required_height / y_span)
+
+        content_width = x_span * horizontal_gap
+        content_height = y_span * vertical_gap
+        canvas_width = max(
+            self.MIN_WIDTH,
+            content_width + 2 * self.HORIZONTAL_PADDING,
+        )
+        canvas_height = max(
+            self.MIN_HEIGHT,
+            content_height + 2 * self.VERTICAL_PADDING,
+        )
+        left = (canvas_width - content_width) / 2
+        bottom = (canvas_height + content_height) / 2
+        positions = {
             zone: (
-                self.WIDTH / 2
+                canvas_width / 2
                 if x_span == 0
-                else self.PADDING
-                + (zone.pos[0] - minimum_x) / x_span * drawable_width,
-                self.HEIGHT / 2
+                else left + (zone.pos[0] - minimum_x) * horizontal_gap,
+                canvas_height / 2
                 if y_span == 0
-                else self.HEIGHT
-                - self.PADDING
-                - (zone.pos[1] - minimum_y) / y_span * drawable_height,
+                else bottom - (zone.pos[1] - minimum_y) * vertical_gap,
             )
             for zone in zones
         }
+        return positions, (0.0, 0.0, canvas_width, canvas_height)
+
+    @staticmethod
+    def _layout_key(
+        zones: list[Zone],
+        canvas: tuple[float, float, float, float],
+    ) -> str:
+        """Return a stable key so turn refreshes can preserve the camera."""
+        signature = "|".join(
+            f"{zone.name}:{zone.pos[0]}:{zone.pos[1]}"
+            for zone in zones
+        )
+        signature += ":" + ":".join(f"{value:.1f}" for value in canvas)
+        return hashlib.sha256(signature.encode("utf-8")).hexdigest()[:16]
 
     def _connection_markup(
         self,
@@ -489,6 +539,7 @@ class SvgMapRenderer:
             "normal": "N",
         }.get(zone.kind, "?")
         endpoint = "START" if zone.is_start else "END" if zone.is_end else ""
+        endpoint_class = " zone-endpoint" if endpoint else ""
         shape = self._zone_shape_markup(
             zone,
             x_position,
@@ -496,7 +547,7 @@ class SvgMapRenderer:
             color,
         )
         return (
-            f'<g class="zone-node"><title>{name}: {kind}; '
+            f'<g class="zone-node{endpoint_class}"><title>{name}: {kind}; '
             f'{occupancy}/{capacity} drones; '
             f'color={color_name}</title>{rings}'
             f'{shape}'
@@ -608,68 +659,94 @@ class SvgMapRenderer:
         drone_states: dict[str, str],
         location_name: str,
     ) -> list[str]:
-        """Place individual drone identifiers around one graph location."""
-        parts: list[str] = []
+        """Anchor one zoom-aware drone cluster to a graph location."""
+        if not drones:
+            return []
+        x_position, y_position = center
+        safe_location = html.escape(location_name, quote=True)
+        parts = [
+            f'<g class="drone-cluster" '
+            f'transform="translate({x_position:.1f} {y_position:.1f})" '
+            f'data-anchor-x="{x_position:.1f}" '
+            f'data-anchor-y="{y_position:.1f}">'
+            f'<title>{len(drones)} drones at {safe_location}</title>'
+            '<g class="occupancy-summary screen-fixed-marker" '
+            'data-offset-x="48" data-offset-y="-48" '
+            'transform="translate(48 -48)">'
+            '<circle r="19" fill="#e2e8f0" stroke="#07111f" '
+            'stroke-width="4"/>'
+            f'<text x="0" y="5" text-anchor="middle" '
+            f'class="overflow-count">{len(drones)}</text></g>'
+        ]
         visible_drones = drones[:self.MAX_DRONE_MARKERS]
         for index, drone in enumerate(visible_drones):
-            marker_x, marker_y = self._marker_position(
-                center,
+            orbit_x, orbit_y, ring = self._marker_orbit(
                 index,
                 len(visible_drones),
             )
             parts.append(
                 self._drone_marker(
                     drone.id,
-                    marker_x,
-                    marker_y,
+                    orbit_x,
+                    orbit_y,
+                    ring,
                     drone_states[drone.id],
                     f"{drone.id} at {location_name}",
                 )
             )
         hidden_count = len(drones) - len(visible_drones)
         if hidden_count:
-            x_position, y_position = center
             parts.append(
-                f'<g class="occupancy-overflow"><title>'
+                '<g class="occupancy-overflow screen-fixed-marker" '
+                'data-offset-x="64" data-offset-y="42" '
+                'transform="translate(64 42)"><title>'
                 f'{hidden_count} additional drones at '
-                f'{html.escape(location_name)}</title>'
-                f'<rect x="{x_position + 45:.1f}" y="{y_position + 30:.1f}" '
-                'width="52" height="25" rx="12" fill="#e2e8f0"/>'
-                f'<text x="{x_position + 71:.1f}" y="{y_position + 48:.1f}" '
-                'text-anchor="middle" class="overflow-count">'
+                f'{safe_location}</title>'
+                '<rect x="-26" y="-13" width="52" height="25" '
+                'rx="12" fill="#e2e8f0"/>'
+                '<text x="0" y="5" text-anchor="middle" '
+                'class="overflow-count">'
                 f'+{hidden_count}</text></g>'
             )
+        parts.append("</g>")
         return parts
 
     @staticmethod
-    def _marker_position(
-        center: tuple[float, float],
+    def _marker_orbit(
         index: int,
         total: int,
-    ) -> tuple[float, float]:
-        """Return a deterministic orbit position for one drone marker."""
-        radius = 68.0 if total <= 10 else 72.0 + 23.0 * (index // 10)
+    ) -> tuple[float, float, int]:
+        """Return a deterministic direction and ring for a drone marker."""
+        ring = 0 if total <= 10 else index // 10
         orbit_index = index if total <= 10 else index % 10
         orbit_size = total if total <= 10 else min(10, total)
         angle = -math.pi / 2 + 2 * math.pi * orbit_index / orbit_size
-        return (
-            center[0] + radius * math.cos(angle),
-            center[1] + radius * math.sin(angle),
-        )
+        return math.cos(angle), math.sin(angle), ring
 
-    @staticmethod
+    @classmethod
     def _drone_marker(
+        cls,
         drone_id: str,
-        x_position: float,
-        y_position: float,
+        orbit_x: float,
+        orbit_y: float,
+        ring: int,
         state: str,
         title: str,
     ) -> str:
-        """Return one readable drone marker and accessible tooltip."""
+        """Return one marker whose local orbit follows the camera zoom."""
         safe_id = html.escape(drone_id, quote=True)
         safe_title = html.escape(title, quote=True)
+        radius = (
+            cls.ZONE_RADIUS
+            + cls.DRONE_SCREEN_GAP
+            + ring * cls.DRONE_RING_GAP
+        )
+        x_position = orbit_x * radius
+        y_position = orbit_y * radius
         return (
             f'<g class="drone-marker drone-{state}" '
+            f'data-orbit-x="{orbit_x:.6f}" '
+            f'data-orbit-y="{orbit_y:.6f}" data-ring="{ring}" '
             f'transform="translate({x_position:.1f} {y_position:.1f})">'
             f'<title>{safe_title}</title>'
             f'{SvgMapRenderer._drone_shape_markup(safe_id)}</g>'
@@ -818,8 +895,10 @@ class SvgMapRenderer:
         """Return a small SVG placeholder for an empty state."""
         safe_message = html.escape(message)
         return (
-            '<svg class="flyin-map" viewBox="0 0 1200 520" role="img">'
-            '<rect width="1200" height="520" rx="24" fill="#07111f"/>'
-            '<text x="600" y="260" text-anchor="middle" '
+            '<svg class="flyin-map" viewBox="0 0 1000 600" '
+            'data-base-x="0" data-base-y="0" data-base-width="1000" '
+            'data-base-height="600" data-layout-key="empty" role="img">'
+            '<rect width="1000" height="600" rx="24" fill="#07111f"/>'
+            '<text x="500" y="300" text-anchor="middle" '
             f'class="empty-label">{safe_message}</text></svg>'
         )

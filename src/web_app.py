@@ -25,67 +25,135 @@ body {
     overflow-x: hidden;
 }
 .flyin-shell {
-    width: min(1500px, 100%);
     margin: 0 auto;
-    padding: 0 20px 24px;
+    padding: 0 4px 32px;
+    width: min(1900px, calc(100% - 8px));
 }
 .flyin-header {
-    height: 64px;
-    min-height: 64px;
+    height: 72px;
+    min-height: 72px;
 }
 .simulation-cockpit {
     display: grid;
-    gap: 10px;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    height: calc(100dvh - 64px);
+    gap: 14px;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: calc(100dvh - 72px);
     min-height: 0;
-    padding: 10px 0 12px;
+    padding: 14px 0 16px;
     width: 100%;
 }
-.cockpit-controls {
-    padding: 10px 14px;
-}
-.latest-movement-row {
+.simulation-utility-bar {
     align-items: center;
-    border-top: 1px solid #1e293b;
-    display: flex;
-    gap: 10px;
-    margin-top: 8px;
-    min-height: 25px;
-    padding-top: 7px;
+    display: flex !important;
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 12px;
+    min-height: 88px;
+    overflow: visible;
+    padding: 12px 16px;
     width: 100%;
 }
-.latest-movement-label {
-    color: #94a3b8;
+.utility-brand {
+    align-items: center;
+    display: flex;
     flex: 0 0 auto;
+    gap: 9px;
+    min-width: 92px;
+    padding: 0 6px;
+}
+.utility-controls {
+    align-items: center;
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-width: 0;
+}
+.utility-map-select {
+    flex: 1 1 480px;
+    max-width: 600px;
+    min-width: 420px;
+}
+.utility-map-select .q-field__control {
+    min-height: 52px;
+}
+.utility-map-select .q-field__native {
+    font-size: 15px;
+}
+.utility-controls .q-btn:not(.q-btn--round) {
+    min-height: 52px;
+    min-width: 100px;
+    padding-inline: 18px;
+}
+.utility-controls .q-btn.q-btn--round {
+    height: 48px;
+    min-height: 48px;
+    min-width: 48px;
+    width: 48px;
+}
+.utility-status {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+}
+.status-pill {
+    align-items: center;
+    background: rgba(2, 8, 23, 0.72);
+    border: 1px solid #1e293b;
+    border-radius: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    justify-content: center;
+    min-height: 56px;
+    min-width: 72px;
+    padding: 6px 10px;
+    white-space: nowrap;
+}
+.status-pill-label {
+    color: #64748b;
     font-size: 11px;
-    letter-spacing: .06em;
+    font-weight: 700;
+    letter-spacing: .05em;
     text-transform: uppercase;
 }
-.status-strip {
-    display: grid;
-    gap: 8px;
-    grid-template-columns: 1.25fr repeat(6, 1fr);
-    width: 100%;
+.status-pill-value {
+    font-size: 17px;
+    font-weight: 700;
 }
-.metric-card {
-    min-width: 0;
-    padding: 8px 12px;
+.utility-view-controls {
+    align-items: center;
+    border-left: 1px solid #1e293b;
+    display: flex;
+    flex: 0 0 auto;
+    gap: 5px;
+    padding-left: 14px;
+}
+.utility-view-controls .q-btn {
+    height: 44px;
+    min-height: 44px;
+    min-width: 44px;
+    width: 44px;
+}
+.zoom-readout-ui {
+    font-size: 14px;
+    min-width: 52px;
 }
 .network-card {
     display: flex !important;
     flex-direction: column;
     min-height: 0;
     overflow: hidden;
-    padding: 8px;
+    padding: 10px;
 }
 .network-heading {
     align-items: center;
     display: flex;
     flex: 0 0 auto;
     justify-content: space-between;
-    min-height: 38px;
-    padding: 2px 10px 6px;
+    min-height: 48px;
+    padding: 4px 12px 8px;
 }
 .network-graph {
     flex: 1 1 auto;
@@ -107,7 +175,6 @@ body {
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.22);
 }
 .flyin-map {
-    --viewport-inverse-scale: 1;
     cursor: grab;
     display: block;
     height: 100%;
@@ -118,32 +185,28 @@ body {
     width: 100%;
 }
 .flyin-map.is-panning { cursor: grabbing; }
-.flyin-map .map-world { transform-origin: 0 0; }
-.flyin-map .zone-node,
-.flyin-map .connection-badge,
-.flyin-map .connection-label,
-.flyin-map .transit-location,
-.flyin-map .transit-count,
-.flyin-map .drone-silhouette,
-.flyin-map .occupancy-overflow,
-.flyin-map .departure-beacon,
-.flyin-map .arrival-beacon {
-    transform: scale(var(--viewport-inverse-scale));
-    transform-box: fill-box;
-    transform-origin: center;
-}
 .flyin-map line,
 .flyin-map .movement-path {
     vector-effect: non-scaling-stroke;
 }
-.flyin-map.zoom-overview .zone-detail,
-.flyin-map.zoom-overview .connection-badge,
-.flyin-map.zoom-overview .connection-label,
-.flyin-map.zoom-overview .drone-id { display: none; }
+.flyin-map .zone-node,
+.flyin-map .drone-marker,
+.flyin-map .connection-node,
+.flyin-map .movement-trace {
+    transform-box: view-box;
+}
+.flyin-map .occupancy-summary { display: none; }
 .flyin-map.map-complex:not(.zoom-medium) .zone-detail,
+.flyin-map.map-complex:not(.zoom-medium) .zone-label,
+.flyin-map.map-complex:not(.zoom-medium) .drone-marker,
+.flyin-map.map-complex:not(.zoom-medium) .occupancy-overflow,
 .flyin-map.map-complex:not(.zoom-medium) .drone-id,
 .flyin-map.map-complex:not(.zoom-medium) .drone-id-plate {
     display: none;
+}
+.flyin-map.map-complex:not(.zoom-medium) .occupancy-summary,
+.flyin-map.map-complex:not(.zoom-medium) .zone-endpoint .zone-label {
+    display: block;
 }
 .flyin-map.map-complex:not(.zoom-detail) .connection-badge,
 .flyin-map.map-complex:not(.zoom-detail) .connection-label {
@@ -195,13 +258,19 @@ body {
 }
 @media (max-width: 900px) {
     .visual-grid { grid-template-columns: 1fr; }
-    .flyin-shell { padding: 0 10px 16px; }
+    .flyin-shell { padding: 0 8px 16px; width: 100%; }
     .simulation-cockpit {
         height: auto;
         min-height: calc(100dvh - 56px);
     }
     .flyin-header { height: 56px; min-height: 56px; }
-    .status-strip { grid-template-columns: repeat(4, 1fr); }
+    .simulation-utility-bar { align-items: stretch; flex-direction: column; }
+    .utility-controls { flex-wrap: wrap; }
+    .utility-controls, .utility-status { width: 100%; }
+    .utility-map-select { max-width: none; min-width: 0; width: 100%; }
+    .utility-controls .q-btn:not(.q-btn--round) { flex: 1 1 110px; }
+    .utility-status { flex-wrap: wrap; }
+    .utility-view-controls { border-left: 0; margin-left: auto; }
     .network-card { min-height: 62vh; }
 }
 @media (max-height: 760px) and (min-width: 901px) {
@@ -210,10 +279,57 @@ body {
         height: calc(100dvh - 54px);
         padding-top: 7px;
     }
-    .cockpit-controls { padding-block: 7px; }
-    .metric-card { padding-block: 5px; }
+    .simulation-utility-bar { padding-block: 6px; }
     .network-heading { min-height: 30px; }
     .header-subtitle, .network-subtitle { display: none; }
+}
+body.flyin-fullscreen {
+    overflow: hidden;
+}
+body.flyin-fullscreen .flyin-header,
+body.flyin-fullscreen .below-fold-content,
+body.flyin-fullscreen .network-heading {
+    display: none !important;
+}
+body.flyin-fullscreen .flyin-shell {
+    height: 100dvh;
+    inset: 0;
+    margin: 0;
+    max-width: none;
+    padding: 0;
+    position: fixed;
+    width: 100vw;
+    z-index: 5000;
+}
+body.flyin-fullscreen .simulation-cockpit {
+    gap: 0;
+    height: 100dvh;
+    padding: 0;
+}
+body.flyin-fullscreen .simulation-utility-bar {
+    background: rgba(2, 8, 23, 0.97);
+    border: 0;
+    border-bottom: 1px solid #1e293b;
+    border-radius: 0;
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+    min-height: 88px;
+    z-index: 2;
+}
+body.flyin-fullscreen .network-card {
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+}
+body.flyin-fullscreen .network-graph,
+body.flyin-fullscreen .flyin-map {
+    height: 100%;
+    width: 100%;
+}
+body.flyin-fullscreen .fullscreen-button .q-icon {
+    color: #67e8f9;
+}
+@media (max-width: 1700px) {
+    .status-pill.optional-status { display: none; }
 }
 .zone-label, .connection-label, .empty-label {
     fill: #cbd5e1;
@@ -364,46 +480,103 @@ VIEWPORT_SCRIPT = """
 (() => {
     if (window.flyinViewport) return;
 
+    const MIN_SCALE = 1;
+    const MAX_SCALE = 12;
+    const ZONE_RADIUS = 39;
+    const DRONE_SCREEN_GAP = 42;
+    const DRONE_RING_GAP = 34;
+    const DRONE_ZOOM_GROWTH = 0.35;
     const clamp = (value, minimum, maximum) =>
         Math.min(maximum, Math.max(minimum, value));
 
     const getSvg = () =>
         document.querySelector('.network-graph svg.flyin-map');
 
+    const readBaseViewBox = (svg) => ({
+        x: Number(svg.dataset.baseX ?? 0),
+        y: Number(svg.dataset.baseY ?? 0),
+        width: Number(svg.dataset.baseWidth ?? svg.viewBox.baseVal.width),
+        height: Number(svg.dataset.baseHeight ?? svg.viewBox.baseVal.height),
+        key: svg.dataset.layoutKey ?? 'unknown',
+    });
+
     const getState = (svg) => {
         const container = svg.closest('.network-graph');
         if (!container) return null;
-        if (!container.__flyinViewState) {
+        const base = readBaseViewBox(svg);
+        const previous = container.__flyinViewState;
+        if (!previous || previous.base.key !== base.key) {
             container.__flyinViewState = {
                 scale: 1,
-                x: 0,
-                y: 0,
+                centerX: base.x + base.width / 2,
+                centerY: base.y + base.height / 2,
                 dragging: false,
+                base,
             };
+        } else {
+            previous.base = base;
         }
         return container.__flyinViewState;
     };
 
     const updateSemanticZoom = (svg, scale) => {
-        svg.classList.toggle('zoom-overview', scale < 0.78);
-        svg.classList.toggle('zoom-medium', scale >= 1.28);
-        svg.classList.toggle('zoom-detail', scale >= 1.72);
+        svg.classList.toggle('zoom-overview', scale < 1.35);
+        svg.classList.toggle('zoom-medium', scale >= 1.35);
+        svg.classList.toggle('zoom-detail', scale >= 2.4);
         const label = document.querySelector('.zoom-readout-ui');
-        if (label) label.textContent = `${Math.round(scale * 100)}%`;
+        const text = `${Math.round(scale * 100)}%`;
+        if (label && label.textContent !== text) label.textContent = text;
+    };
+
+    const updateDroneMarkers = (svg, scale) => {
+        const fixedScale = 1 / scale;
+        const markerScale = 1 / Math.pow(
+            scale,
+            1 - DRONE_ZOOM_GROWTH,
+        );
+        svg.querySelectorAll('.drone-marker').forEach((marker) => {
+            const orbitX = Number(marker.dataset.orbitX ?? 0);
+            const orbitY = Number(marker.dataset.orbitY ?? -1);
+            const ring = Number(marker.dataset.ring ?? 0);
+            const radius = ZONE_RADIUS +
+                (DRONE_SCREEN_GAP + ring * DRONE_RING_GAP) * markerScale;
+            marker.setAttribute(
+                'transform',
+                `translate(${orbitX * radius} ${orbitY * radius}) ` +
+                    `scale(${markerScale})`,
+            );
+        });
+        svg.querySelectorAll('.screen-fixed-marker').forEach((marker) => {
+            const offsetX = Number(marker.dataset.offsetX ?? 0) / scale;
+            const offsetY = Number(marker.dataset.offsetY ?? 0) / scale;
+            marker.setAttribute(
+                'transform',
+                `translate(${offsetX} ${offsetY}) scale(${fixedScale})`,
+            );
+        });
     };
 
     const apply = (svg, state) => {
-        const world = svg.querySelector('.map-world');
-        if (!world) return;
-        world.setAttribute(
-            'transform',
-            `translate(${state.x} ${state.y}) scale(${state.scale})`,
+        const {base} = state;
+        const width = base.width / state.scale;
+        const height = base.height / state.scale;
+        state.centerX = clamp(
+            state.centerX,
+            base.x + width / 2,
+            base.x + base.width - width / 2,
         );
-        const inverseScale = state.scale > 1 ? 1 / state.scale : 1;
-        svg.style.setProperty(
-            '--viewport-inverse-scale',
-            inverseScale.toString(),
+        state.centerY = clamp(
+            state.centerY,
+            base.y + height / 2,
+            base.y + base.height - height / 2,
         );
+        const x = state.centerX - width / 2;
+        const y = state.centerY - height / 2;
+        svg.setAttribute(
+            'viewBox',
+            `${x} ${y} ${width} ${height}`,
+        );
+        updateDroneMarkers(svg, state.scale);
         updateSemanticZoom(svg, state.scale);
     };
 
@@ -416,11 +589,25 @@ VIEWPORT_SCRIPT = """
     };
 
     const zoomAt = (svg, state, factor, point) => {
-        const nextScale = clamp(state.scale * factor, 0.45, 8);
-        const worldX = (point.x - state.x) / state.scale;
-        const worldY = (point.y - state.y) / state.scale;
-        state.x = point.x - worldX * nextScale;
-        state.y = point.y - worldY * nextScale;
+        const {base} = state;
+        const nextScale = clamp(
+            state.scale * factor,
+            MIN_SCALE,
+            MAX_SCALE,
+        );
+        if (nextScale === state.scale) return;
+        const currentWidth = base.width / state.scale;
+        const currentHeight = base.height / state.scale;
+        const currentX = state.centerX - currentWidth / 2;
+        const currentY = state.centerY - currentHeight / 2;
+        const nextWidth = base.width / nextScale;
+        const nextHeight = base.height / nextScale;
+        const horizontalRatio = (point.x - currentX) / currentWidth;
+        const verticalRatio = (point.y - currentY) / currentHeight;
+        const nextX = point.x - horizontalRatio * nextWidth;
+        const nextY = point.y - verticalRatio * nextHeight;
+        state.centerX = nextX + nextWidth / 2;
+        state.centerY = nextY + nextHeight / 2;
         state.scale = nextScale;
         apply(svg, state);
     };
@@ -428,7 +615,11 @@ VIEWPORT_SCRIPT = """
     const reset = (svg) => {
         const state = getState(svg);
         if (!state) return;
-        Object.assign(state, {scale: 1, x: 0, y: 0});
+        Object.assign(state, {
+            scale: 1,
+            centerX: state.base.x + state.base.width / 2,
+            centerY: state.base.y + state.base.height / 2,
+        });
         apply(svg, state);
     };
 
@@ -449,20 +640,20 @@ VIEWPORT_SCRIPT = """
             state.dragging = true;
             state.startX = event.clientX;
             state.startY = event.clientY;
-            state.originX = state.x;
-            state.originY = state.y;
+            state.originCenterX = state.centerX;
+            state.originCenterY = state.centerY;
             svg.classList.add('is-panning');
             svg.setPointerCapture(event.pointerId);
         });
 
         svg.addEventListener('pointermove', (event) => {
             if (!state.dragging) return;
-            const box = svg.getBoundingClientRect();
-            const viewBox = svg.viewBox.baseVal;
-            state.x = state.originX +
-                (event.clientX - state.startX) * viewBox.width / box.width;
-            state.y = state.originY +
-                (event.clientY - state.startY) * viewBox.height / box.height;
+            const matrix = svg.getScreenCTM();
+            if (!matrix) return;
+            state.centerX = state.originCenterX +
+                (state.startX - event.clientX) / Math.abs(matrix.a);
+            state.centerY = state.originCenterY +
+                (state.startY - event.clientY) / Math.abs(matrix.d);
             apply(svg, state);
         });
 
@@ -502,7 +693,44 @@ VIEWPORT_SCRIPT = """
             const svg = getSvg();
             if (svg) reset(svg);
         },
+        async toggleFullscreen() {
+            try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.body.dataset.flyinFocus === 'true') {
+                    delete document.body.dataset.flyinFocus;
+                    syncFullscreen();
+                } else if (
+                    document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                } else {
+                    document.body.dataset.flyinFocus = 'true';
+                    syncFullscreen();
+                }
+            } catch (_error) {
+                document.body.dataset.flyinFocus = 'true';
+                syncFullscreen();
+            }
+        },
     };
+
+    const syncFullscreen = () => {
+        const enabled = Boolean(document.fullscreenElement) ||
+            document.body.dataset.flyinFocus === 'true';
+        document.body.classList.toggle('flyin-fullscreen', enabled);
+        const button = document.querySelector('.fullscreen-button');
+        if (button) {
+            const label = enabled ? 'Exit fullscreen' : 'Enter fullscreen';
+            button.setAttribute('aria-label', label);
+            button.setAttribute('title', label);
+            const icon = button.querySelector('.q-icon');
+            if (icon) {
+                icon.textContent = enabled ? 'fullscreen_exit' : 'fullscreen';
+            }
+        }
+        requestAnimationFrame(initializeAll);
+    };
+    document.addEventListener('fullscreenchange', syncFullscreen);
 
     new MutationObserver(initializeAll).observe(
         document.documentElement,
@@ -525,7 +753,6 @@ class FlyInWebView:
     transit_label: Label
     moved_label: Label
     waiting_label: Label
-    movement_label: Label
     graph_view: Html
     movement_detail: Html
     drone_manifest: Html
@@ -568,8 +795,7 @@ class FlyInWebView:
 
         with ui.column().classes("flyin-shell"):
             with ui.element("section").classes("simulation-cockpit"):
-                self._build_controls()
-                self._build_status_cards()
+                self._build_utility_bar()
                 with ui.card().classes("flyin-card network-card w-full"):
                     with ui.row().classes("network-heading w-full"):
                         with ui.column().classes("gap-0"):
@@ -582,32 +808,9 @@ class FlyInWebView:
                             ).classes(
                                 "network-subtitle text-xs text-slate-400"
                             )
-                        with ui.row().classes("items-center gap-1"):
-                            ui.label("Wheel zoom · drag pan").classes(
-                                "text-xs text-slate-400 mr-1"
-                            )
-                            ui.button(
-                                icon="remove",
-                                on_click=self._zoom_out,
-                            ).props(
-                                'flat dense round aria-label="Zoom out"'
-                            )
-                            ui.label("100%").classes(
-                                "zoom-readout-ui text-xs text-slate-300 "
-                                "w-10 text-center"
-                            )
-                            ui.button(
-                                icon="add",
-                                on_click=self._zoom_in,
-                            ).props(
-                                'flat dense round aria-label="Zoom in"'
-                            )
-                            ui.button(
-                                icon="center_focus_strong",
-                                on_click=self._reset_view,
-                            ).props(
-                                'flat dense round aria-label="Reset view"'
-                            )
+                        ui.label(
+                            "Wheel zoom · drag pan · double-click reset"
+                        ).classes("text-xs text-slate-400")
                     self.graph_view = ui.html(
                         self.renderer.render(
                             self.controller.simulation_or_raise(),
@@ -655,92 +858,120 @@ class FlyInWebView:
         )
         self._refresh()
 
+    def _build_utility_bar(self) -> None:
+        """Create the single control and status surface above the graph."""
+        with ui.card().classes("flyin-card simulation-utility-bar"):
+            with ui.element("div").classes("utility-brand"):
+                ui.icon("flight", size="24px", color="primary")
+                ui.label("Fly-in").classes("font-bold")
+            self._build_controls()
+            self._build_status_cards()
+            self._build_view_controls()
+
     def _build_controls(self) -> None:
-        """Create map selection and playback controls."""
-        with ui.card().classes("flyin-card cockpit-controls w-full"):
-            with ui.row().classes(
-                "w-full items-end gap-3 flex-wrap"
-            ):
-                self.map_select = ui.select(
-                    options={
-                        name: self._map_label(name)
-                        for name in self.controller.available_maps
-                    },
-                    value=self.controller.selected_map,
-                    label="Map",
-                ).classes("min-w-72 grow").props("dark outlined")
-                ui.button(
-                    "Load",
-                    on_click=self._load_selected_map,
-                    icon="folder_open",
-                )
-                ui.button(
-                    "Step",
-                    on_click=self._single_step,
-                    icon="skip_next",
-                ).props("outline")
-                ui.button(
-                    "Play",
-                    on_click=self._play,
-                    icon="play_arrow",
-                    color="secondary",
-                )
-                ui.button(
-                    "Pause",
-                    on_click=self._pause,
-                    icon="pause",
-                ).props("flat")
-                ui.button(
-                    "Reset",
-                    on_click=self._reset,
-                    icon="restart_alt",
-                ).props("flat")
-            with ui.element("div").classes("latest-movement-row"):
-                ui.label("Latest").classes("latest-movement-label")
-                self.movement_label = ui.label().classes(
-                    "font-mono text-xs break-all"
-                )
+        """Create compact map selection and playback controls."""
+        with ui.element("div").classes("utility-controls"):
+            self.map_select = ui.select(
+                options={
+                    name: self._map_label(name)
+                    for name in self.controller.available_maps
+                },
+                value=self.controller.selected_map,
+                label="Map",
+                on_change=self._load_selected_map,
+            ).classes("utility-map-select").props("dark outlined")
+            ui.button(
+                "Step",
+                on_click=self._single_step,
+                icon="skip_next",
+            ).props("outline")
+            ui.button(
+                "Play",
+                on_click=self._play,
+                icon="play_arrow",
+                color="secondary",
+            )
+            ui.button(icon="pause", on_click=self._pause).props(
+                'flat round aria-label="Pause simulation" '
+                'title="Pause simulation"'
+            )
+            ui.button(icon="restart_alt", on_click=self._reset).props(
+                'flat round aria-label="Reset simulation" '
+                'title="Reset simulation"'
+            )
 
     def _build_status_cards(self) -> None:
-        """Create status, turn, and movement summaries."""
-        with ui.element("div").classes("status-strip"):
-            with ui.card().classes("flyin-card metric-card"):
-                ui.label("Status").classes("text-xs text-slate-400")
-                self.status_label = ui.label().classes(
-                    "text-xl font-semibold"
-                )
-            with ui.card().classes("flyin-card metric-card"):
-                ui.label("Turn").classes("text-xs text-slate-400")
-                self.turn_label = ui.label().classes("text-xl font-semibold")
-            with ui.card().classes("flyin-card metric-card"):
-                ui.label("Delivered").classes("text-xs text-slate-400")
-                self.delivered_label = ui.label().classes(
-                    "text-xl font-semibold"
-                )
-            with ui.card().classes("flyin-card metric-card"):
-                ui.label("Active").classes("text-xs text-slate-400")
-                self.active_label = ui.label().classes(
-                    "text-xl font-semibold"
-                )
-            with ui.card().classes("flyin-card metric-card"):
-                ui.label("Moved this turn").classes(
-                    "text-xs text-slate-400"
-                )
-                self.moved_label = ui.label().classes(
-                    "text-xl font-semibold text-cyan-300"
-                )
-            with ui.card().classes("flyin-card metric-card"):
-                ui.label("Restricted transit").classes(
-                    "text-xs text-slate-400"
-                )
-                self.transit_label = ui.label().classes(
-                    "text-xl font-semibold text-yellow-300"
-                )
-            with ui.card().classes("flyin-card metric-card"):
-                ui.label("Waiting").classes("text-xs text-slate-400")
-                self.waiting_label = ui.label().classes(
-                    "text-xl font-semibold"
-                )
+        """Create compact status summaries for the utility bar."""
+        with ui.element("div").classes("utility-status"):
+            self.status_label = self._status_pill("Status")
+            self.turn_label = self._status_pill("Turn")
+            self.delivered_label = self._status_pill("Delivered")
+            self.active_label = self._status_pill("Active", optional=True)
+            self.moved_label = self._status_pill(
+                "Moved",
+                "text-cyan-300",
+                optional=True,
+            )
+            self.transit_label = self._status_pill(
+                "Transit",
+                "text-yellow-300",
+                optional=True,
+            )
+            self.waiting_label = self._status_pill("Waiting", optional=True)
+
+    @staticmethod
+    def _status_pill(
+        label: str,
+        value_classes: str = "",
+        optional: bool = False,
+    ) -> Label:
+        """Build one labelled utility-bar metric and return its value label."""
+        optional_class = " optional-status" if optional else ""
+        with ui.element("div").classes(f"status-pill{optional_class}"):
+            ui.label(label).classes("status-pill-label")
+            return ui.label().classes(
+                f"status-pill-value {value_classes}".strip()
+            )
+
+    def _build_view_controls(self) -> None:
+        """Create zoom, reset, and fullscreen controls in the utility bar."""
+        with ui.element("div").classes("utility-view-controls"):
+            zoom_out_button = ui.button(icon="remove").props(
+                'flat round aria-label="Zoom out"'
+            )
+            zoom_out_button.on(
+                "click",
+                js_handler="() => window.flyinViewport?.zoomBy(0.8)",
+            )
+            ui.label("100%").classes(
+                "zoom-readout-ui text-xs text-slate-300 w-10 text-center"
+            )
+            zoom_in_button = ui.button(icon="add").props(
+                'flat round aria-label="Zoom in"'
+            )
+            zoom_in_button.on(
+                "click",
+                js_handler="() => window.flyinViewport?.zoomBy(1.25)",
+            )
+            reset_view_button = ui.button(
+                icon="center_focus_strong",
+            ).props('flat round aria-label="Reset view"')
+            reset_view_button.on(
+                "click",
+                js_handler="() => window.flyinViewport?.reset()",
+            )
+            fullscreen_button = ui.button(icon="fullscreen").classes(
+                "fullscreen-button"
+            ).props(
+                'flat round aria-label="Enter fullscreen" '
+                'title="Enter fullscreen"'
+            )
+            fullscreen_button.on(
+                "click",
+                js_handler=(
+                    "() => window.flyinViewport?.toggleFullscreen()"
+                ),
+            )
 
     @staticmethod
     def _build_legend() -> None:
@@ -769,7 +1000,7 @@ class FlyInWebView:
             ui.label("Double ring: start/end · dashed ring: blocked")
 
     def _load_selected_map(self) -> None:
-        """Load the map currently selected by the user."""
+        """Load a newly selected map and synchronize the whole controller."""
         selected_map = self.map_select.value
         if not isinstance(selected_map, str):
             self._show_error("Select a valid map before loading")
@@ -782,6 +1013,8 @@ class FlyInWebView:
             self._refresh()
             self._reset_view()
         except (OSError, RuntimeError, ValueError) as error:
+            self.map_select.set_value(self.controller.selected_map)
+            self._refresh()
             self._show_error(str(error))
 
     def _single_step(self) -> None:
@@ -832,16 +1065,6 @@ class FlyInWebView:
             self._show_error(str(error))
 
     @staticmethod
-    def _zoom_in() -> None:
-        """Zoom the graphical board toward its center."""
-        ui.run_javascript("window.flyinViewport?.zoomBy(1.2)")
-
-    @staticmethod
-    def _zoom_out() -> None:
-        """Zoom the graphical board away from its center."""
-        ui.run_javascript("window.flyinViewport?.zoomBy(0.8)")
-
-    @staticmethod
     def _reset_view() -> None:
         """Restore the graphical board's fitted position."""
         ui.run_javascript("window.flyinViewport?.reset()")
@@ -865,7 +1088,6 @@ class FlyInWebView:
         self.moved_label.set_text(str(snapshot.moved_drones))
         self.transit_label.set_text(str(snapshot.in_transit_drones))
         self.waiting_label.set_text(str(snapshot.waiting_drones))
-        self.movement_label.set_text(snapshot.last_movement)
         self.graph_view.set_content(
             self.renderer.render(simulation, self.controller.last_transitions)
         )

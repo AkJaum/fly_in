@@ -50,6 +50,8 @@ class FriendlyTestResult(unittest.TextTestResult):
         "tests.test_visualization": (
             "src/visualization.py :: BrowserSimulation/SvgMapRenderer",
         ),
+        "test_web_app": ("src/web_app.py :: Fullscreen viewport",),
+        "tests.test_web_app": ("src/web_app.py :: Fullscreen viewport",),
     }
 
     def startTest(self, test: unittest.case.TestCase) -> None:

@@ -318,22 +318,52 @@ A camada visual observa o estado produzido por `Simulation.next_turn()`; ela
 nao calcula rotas, aceita movimentos nem altera regras de capacidade. Assim,
 mudancas de apresentacao permanecem isoladas da logica avaliada.
 
-Em telas desktop, o cockpit deve ocupar `100dvh` menos o cabecalho e manter no
-mesmo viewport: seletor de mapa, controles, metricas, ultimo movimento e grafo
-completo. Tabelas detalhadas, manifesto, chave visual e historico ficam abaixo
-da dobra. Em telas estreitas, a pagina volta a permitir altura natural para nao
-comprimir controles ou informacoes.
+Em telas desktop, o cockpit deve ocupar `100dvh` menos o cabecalho e usar uma
+area de conteudo ampla, mantendo no mesmo viewport uma barra utilitaria superior
+maior e o grafo completo. A barra reune seletor de mapa, controles de
+reproducao, metricas, zoom, recentralizacao e entrada em tela cheia. Alterar o
+seletor deve pausar a reproducao e carregar imediatamente o novo mapa, mantendo
+seletor, controlador e simulacao no mesmo estado sem um botao de carga separado.
+No desktop, seletor, botoes, indicadores de status e controles de viewport devem
+usar largura e altura ampliadas. Rotulo e valor de cada indicador ficam
+empilhados para conservar uma unica linha em telas largas; breakpoints podem
+ocultar metricas opcionais ou quebrar os controles em telas menores sem alterar
+o SVG da simulacao.
+No modo de tela cheia, cabecalho, titulo do grafo e conteudo detalhado
+ficam ocultos: apenas a barra utilitaria e a simulacao usam o viewport. Tabelas
+detalhadas, manifesto, chave visual e historico continuam abaixo da dobra no
+modo normal. Em telas estreitas, a barra quebra em linhas e a pagina volta a
+permitir altura natural.
+
+O handler JavaScript do botao de tela cheia deve ser registrado como callback,
+nao como uma expressao executada durante a renderizacao do NiceGUI. Isso evita
+que atualizacoes reativas alternem continuamente entre os layouts normal e de
+tela cheia.
 
 O grafo funciona como um quadro branco: a roda do mouse aplica zoom ao redor do
 cursor, arrastar com o botao primario move o mapa, os botoes `-` e `+` oferecem
-controle alternativo e clique duplo ou o botao de alvo recentraliza a visao. A
-camera persiste durante `Step` e `Play`, mesmo quando o SVG do novo turno e
-renderizado. Em mapas densos, o zoom semantico oculta detalhes secundarios na
-visao geral e revela progressivamente detalhes de zonas, capacidades de links e
-IDs dos drones ao aproximar. Acima da escala ajustada, as coordenadas se afastam
-mas nos, drones e rotulos mantem tamanho estavel na tela; assim, aproximar
-resolve colisoes em vez de apenas amplia-las. Tooltips, tabelas e manifesto
-preservam os valores completos independentemente do nivel de zoom.
+controle alternativo e clique duplo ou o botao de alvo recentraliza a visao. Os
+botoes de zoom executam callbacks diretamente no navegador, sem depender de uma
+ida e volta ao servidor. A camera persiste durante `Step` e `Play`, mesmo quando
+o SVG do novo turno e renderizado.
+
+Cada mapa publica seu proprio canvas base. A camada visual conserva as relacoes
+das coordenadas do subject, garante uma distancia minima por passo de coordenada
+e expande o canvas quando a topologia e grande, em vez de comprimir todos os
+mapas em um retangulo fixo. O zoom altera um unico `viewBox` compartilhado por
+zonas, conexoes, ancoras dos drones, rotulos e animacoes. Assim, zonas e linhas
+permanecem nas mesmas coordenadas e nao se deslocam entre si.
+
+Cada grupo de drones possui uma unica ancora exatamente sobre a zona ou conexao
+que ocupa. A compensacao de zoom atua somente nos deslocamentos locais e no
+tamanho dos glifos dos drones: a folga e recalculada a partir da borda da zona,
+sem alterar a ancora do grafo. A compensacao e parcial para que glifo e folga
+crescam gradualmente ao aproximar, mantendo cada drone visivel sem sobrepor a
+zona. Portanto, aproximar o mapa nao afasta os drones
+da rota. Em mapas densos, a visao geral usa um contador compacto por local e
+oculta detalhes secundarios; nomes, marcadores individuais e capacidades sao
+revelados progressivamente ao aproximar. Tooltips, tabelas e manifesto preservam
+os valores completos em qualquer zoom.
 
 As zonas precisam ser reconheciveis por silhueta alem da cor: circulo normal,
 hexagono prioritario, losango restrito e quadrado cruzado bloqueado. Drones sao

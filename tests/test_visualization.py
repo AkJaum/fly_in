@@ -92,6 +92,14 @@ connection: middle-goal
         self.assertIn('class="drone-silhouette"', initial_svg)
         self.assertIn('class="drone-status-light"', initial_svg)
         self.assertIn('class="drone-rotor"', initial_svg)
+        self.assertIn('data-base-width="1000.0"', initial_svg)
+        self.assertIn('data-base-height="600.0"', initial_svg)
+        self.assertIn('class="drone-cluster"', initial_svg)
+        self.assertIn('data-orbit-x=', initial_svg)
+        self.assertIn(
+            'class="occupancy-summary screen-fixed-marker"',
+            initial_svg,
+        )
 
         controller.step()
         moved_svg = renderer.render(
@@ -178,6 +186,39 @@ connection: middle-goal
         self.assertIn('class="map-world"', svg)
         self.assertIn('class="connection-badge"', svg)
         self.assertIn('class="zone-detail"', svg)
+
+        width_match = re.search(r'data-base-width="([0-9.]+)"', svg)
+        height_match = re.search(r'data-base-height="([0-9.]+)"', svg)
+        if width_match is None or height_match is None:
+            self.fail("adaptive canvas metadata is missing")
+        self.assertGreater(float(width_match.group(1)), 1200)
+        self.assertGreater(float(height_match.group(1)), 600)
+
+    def test_adaptive_layout_preserves_minimum_coordinate_spacing(
+        self,
+    ) -> None:
+        """Give dense maps room without changing relative graph geometry."""
+        controller = BrowserSimulation(self.project_root, self.output_path)
+        controller.configure()
+        renderer = SvgMapRenderer()
+        zones = list(controller.simulation_or_raise().graph.zones.values())
+
+        positions, canvas = renderer._adaptive_layout(zones)
+        ordered_positions = [positions[zone] for zone in zones]
+
+        self.assertEqual(canvas, (0.0, 0.0, 1000.0, 600.0))
+        self.assertEqual(
+            ordered_positions[1][0] - ordered_positions[0][0],
+            renderer.HORIZONTAL_GAP,
+        )
+        self.assertEqual(
+            ordered_positions[2][0] - ordered_positions[1][0],
+            renderer.HORIZONTAL_GAP,
+        )
+        self.assertEqual(
+            {position[1] for position in ordered_positions},
+            {renderer.MIN_HEIGHT / 2},
+        )
 
     def test_zone_types_have_distinct_silhouettes(self) -> None:
         """Differentiate zone rules by shape without relying on a legend."""
